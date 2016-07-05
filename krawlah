@@ -51,7 +51,11 @@ module Krawlah
         break if depth == @max_depth
         @current_depth = depth
 
-        url = fix_url(url)
+        begin
+          url = fix_url(url)
+        rescue
+          next
+        end
 
         # Check if url in blacklist or depth has reached max
         if @blacklist.include?(url)
