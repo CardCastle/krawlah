@@ -3,7 +3,7 @@ An Australian themed keyword web crawler for your mates.
 
 ## Our Story
 
-Our mate Mitch is a Chief Executive Mate and wanted a web crawler to generate a list of keywords from potential customer websites. So we gave it a burl. Meet Krawlah.
+Our mate Mitch is a Chief Executive Mate. He wanted a web crawler to generate a list of keywords from potential customer websites. So we gave it a burl. Meet Krawlah.
 
 ## Installation
 
