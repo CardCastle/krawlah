@@ -1,0 +1,148 @@
+#!/usr/bin/env ruby
+
+require 'thor'
+require 'colorize'
+require 'thread'
+require 'open-uri'
+require 'open_uri_redirections'
+require 'nokogiri'
+require 'action_view'
+require_relative 'stopwords'
+require 'csv'
+
+module Krawlah
+  class CLI < Thor
+
+    desc "krawl url", "krawl website for keywords"
+    option "depth", required: false, default: 3, type: :numeric
+    def krawl(url)
+      puts "I be krawlin' #{url}".red
+      puts "Goin' #{options["depth"]} deep...".red
+
+      host_test = URI.parse(url)
+
+      if host_test.scheme.nil?
+        url = "http://#{url}"
+      end
+
+      @base_url = url
+      @max_depth = options["depth"]
+      @current_depth = 0
+      @blacklist = []
+      @common_dict = Krawlah::Stopwords.get_stopwords
+
+      queue = Queue.new
+      queue << [url, @current_depth]
+
+      words = processQueue(queue)
+
+      puts words.count
+
+      generate_csv(words)
+    end
+
+    private
+    def processQueue(queue)
+      words = []
+
+      while !queue.empty?
+        url, depth = queue.pop
+
+        break if depth == @max_depth
+        @current_depth = depth
+
+        url = fix_url(url)
+
+        # Check if url in blacklist or depth has reached max
+        if @blacklist.include?(url)
+          puts "Already krawled: #{url}".yellow
+          next
+        end
+
+        # Skip if PDF
+        if url.end_with?('.pdf')
+          puts "Skipping: #{url}".yellow
+          next
+        end
+
+        # Skip if new base
+        begin
+          if URI.parse(url).host != URI.parse(@base_url).host
+            puts "Skipping: #{URI.parse(url).host}".yellow
+            next
+          end
+        rescue URI::InvalidURIError
+          next
+        end
+
+        puts "#{@current_depth} | #{url}"
+
+        # Grab source from URL
+        begin
+          source = open(url, allow_redirections: :all){|f|f.read}
+        rescue
+          next
+        end
+
+        doc = Nokogiri::HTML(source)
+
+        # Grab link hrefs from source
+        links = doc.css('a')
+        hrefs = links.map {|link| link.attribute('href').to_s}.uniq.sort.delete_if{|href| href.empty?}
+
+        # Add hrefs to queue
+        hrefs.each do |href|
+          queue << [href, @current_depth + 1]
+        end
+
+        # Add url to blacklist
+        @blacklist << url
+
+        # Strip HTML tags and whitespace, removing common words
+        html_str = ActionView::Base.full_sanitizer.sanitize(source)
+
+        begin
+          words << html_str.gsub(/\s+/m, ' ').gsub(/(\?|,|!|\.|:|;|")/, '').strip.downcase.split(" ").delete_if{|word| @common_dict.include?(word)}
+        rescue
+          next
+        end
+
+      end
+      return words.flatten
+    end
+
+    def generate_csv(words)
+      count_map = words.group_by {|x| x}.map { |k, v| {k => v.count }}.reduce(:merge).to_a.sort { |a, b| b[1] <=> a[1] }
+
+      host = URI.parse(@base_url).host
+      CSV.open("./#{host}.csv", "wb") do |csv|
+        csv << ["Word", "Count"]
+        count_map.each do |row|
+          csv << row
+        end
+      end
+    end
+
+    def fix_url(url)
+
+      # Ensure host is present
+      if URI.parse(url).host.nil?
+        url = @base_url + url
+      end
+
+      # Remove any anchors
+      if !url.match(/#/).nil?
+        url = url.split("#").first
+      end
+
+      # Ensure http scheme
+      if url.start_with?('//')
+        url = "http:#{url}"
+      end
+
+      return url
+    end
+  end
+end
+
+Krawlah::CLI.start(ARGV)
