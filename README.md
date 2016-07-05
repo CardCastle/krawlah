@@ -7,13 +7,16 @@ Our mate Mitch is a Chief Executive Mate. He wanted a web crawler to generate a 
 
 ## Installation
 
-```git clone https://github.com/OzGuild/krawlah
+```
+git clone https://github.com/OzGuild/krawlah
 cd krawlah
-bundle install```
+bundle install
+```
 
 ### Dependencies
 
 - Ruby (>= 2)
+- bundler
 - colorize
 - nokogiri
 - actionview
