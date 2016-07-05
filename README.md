@@ -7,9 +7,9 @@ Our mate Mitch is a Chief Executive Mate. He wanted a web crawler to generate a 
 
 ## Installation
 
-`git clone https://github.com/OzGuild/krawlah`
-`cd krawlah`
-`bundle install`
+```git clone https://github.com/OzGuild/krawlah
+cd krawlah
+bundle install```
 
 ### Dependencies
 
